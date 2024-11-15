@@ -23,15 +23,13 @@ namespace delayedpolufabrikkatbot
         private readonly TelegramOptions _telegramOptions;
         private readonly MongoDbOptions _mongoDbOptions;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IMemoryCache _memoryCache;
 
-        public TelegramBotBackgroundService(ILogger<TelegramBotBackgroundService> logger, IOptions<TelegramOptions> telegramOptions, IOptions<MongoDbOptions> mongoDbOptions, IServiceProvider serviceProvider, IMemoryCache memoryCache)
+        public TelegramBotBackgroundService(ILogger<TelegramBotBackgroundService> logger, IOptions<TelegramOptions> telegramOptions, IOptions<MongoDbOptions> mongoDbOptions, IServiceProvider serviceProvider)
         {
             _logger = logger;
             _telegramOptions = telegramOptions.Value;
             _mongoDbOptions = mongoDbOptions.Value;
             _serviceProvider = serviceProvider;
-            _memoryCache = memoryCache;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -77,10 +75,9 @@ namespace delayedpolufabrikkatbot
                 using IServiceScope scope = _serviceProvider.CreateScope();
                 var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
                 var postSubmitionRepository = scope.ServiceProvider.GetRequiredService<IPostSubmitionRepository>();
-                var cacheConroller = scope.ServiceProvider.GetRequiredService<ICacheService>();
+                var postCreationSessionService = scope.ServiceProvider.GetRequiredService<IPostCreationSessionService>();
 
                 Content content = new Content();
-                CacheService cacheService = new CacheService(_memoryCache);
 
                 var text = update.Message.Text;
                 if (text == "/start")
@@ -89,33 +86,34 @@ namespace delayedpolufabrikkatbot
                     await botClient.SendMessage(update.Message.Chat.Id, content.GetInfo(), replyMarkup: GetButtons());
                     return;
                 }
-
                 var user = await userRepository.GetUserByTelegramId(update.Message.From.Id);
 
-                if (cacheService.GetCache(update.Message.From.Id) != null)
-                {
-                    if (cacheService.GetCache(update.Message.From.Id) == "waiting for title")
-                    {
-                        await postSubmitionRepository.UpdaterPostTitleAndUserID(user.Id, update.Message.Text);
-                        cacheService.SetCache(update.Message.From.Id, "waiting for post");
-                        await botClient.SendMessage(update.Message.Chat.Id, content.GetPostInfo());
-                    }
-                    else
-                    {
-                        //переслать пост на модерацию
-                        await botClient.SendMessage(update.Message.Chat.Id, "Публикация отправлена на модерацию!", replyMarkup: GetButtons());
-                        cacheConroller.ClearCache(update.Message.From.Id);
-                        return;
-                    }
-                }
+				if (postCreationSessionService.IsCreationSessionStarted(user.Id, out var session))
+				{
+					if (session.WaitingForTitle)
+					{
+						await postSubmitionRepository.UpdaterPostTitleAndUserID(user.Id, update.Message.Text);
+						session.CurrentStep = PostCreationStep.WaitingForContent;
+						await botClient.SendMessage(update.Message.Chat.Id, content.GetPostInfo());
+						return;
+					}
+					if (session.WaitingForContent)
+					{
+						postCreationSessionService.FinishPostCreationSession(user.Id);
+						await botClient.SendMessage(update.Message.Chat.Id, "Публикация отправлена на модерацию!", replyMarkup: GetButtons());
+						//переслать пост на модерацию
+						return;
+					}
+				}
+
                 switch (text)
                 {
                     case mainInfo:
                         await botClient.SendMessage(update.Message.Chat.Id, content.GetInfo(), replyMarkup: GetButtons());
                         break;
                     case newPost:
-                        await botClient.SendMessage(update.Message.Chat.Id, $"Напишите название вашей публикации. Это название нужно для того, что бы вы смогли в будущем отслеживать её статус");
-                        cacheService.SetCache(update.Message.From.Id, "waiting for title");
+						postCreationSessionService.StartPostCreationSession(user.Id);
+						await botClient.SendMessage(update.Message.Chat.Id, $"Напишите название вашей публикации. Это название нужно для того, что бы вы смогли в будущем отслеживать её статус");
                         break;
                     case profile:
                         var userPosts = await postSubmitionRepository.GetLastPostsByUserId(user.Id, 10);
@@ -125,11 +123,8 @@ namespace delayedpolufabrikkatbot
                         await botClient.SendMessage(update.Message.Chat.Id, "Shop", replyMarkup: GetButtons());
                         break;
                     default:
-                        if (cacheService.GetCache(update.Message.From.Id) == null)
-                        {
-                            await botClient.SendMessage(update.Message.Chat.Id, "Используйте существующие команды", replyMarkup: GetButtons());
-                        }
-                        break;
+						await botClient.SendMessage(update.Message.Chat.Id, "Используйте существующие команды", replyMarkup: GetButtons());
+						break;
                 }
             }
             catch (Exception ex)

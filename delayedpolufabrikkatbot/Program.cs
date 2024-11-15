@@ -8,7 +8,7 @@ using MongoDB.Driver;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPostSubmitionRepository, PostSubmitionRepository>();
-builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<IPostCreationSessionService, PostCreationSessionService>();
 
 builder.Services.AddScoped(opt =>
 {
