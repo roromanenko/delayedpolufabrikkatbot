@@ -42,7 +42,7 @@ namespace delayedpolufabrikkatbot.Service
             {
                 if (session.WaitingForTitle)
                 {
-                    await postSubmitionRepository.UpdaterPostTitleAndUserID(user.Id, text);
+                    session.PostId = await postSubmitionRepository.CreatePostWithTitleAndUserID(user.Id, text);
                     session.CurrentStep = PostCreationStep.WaitingForContent;
                     await botClient.SendMessage(update.Message.Chat.Id, "Напишите содержание публикации.");
                     return;
@@ -52,7 +52,7 @@ namespace delayedpolufabrikkatbot.Service
                 {
                     postCreationSessionService.FinishPostCreationSession(user.Id);
                     await botClient.SendMessage(update.Message.Chat.Id, "Публикация отправлена на модерацию.");
-                    postForwardService.ForwardPostToModeration(update, botClient, userRepository, postSubmitionRepository);
+                    postForwardService.ForwardPostToModeration(update, botClient, userRepository, postSubmitionRepository, session);
                     return;
                 }
             }

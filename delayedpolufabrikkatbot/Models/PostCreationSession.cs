@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MongoDB.Bson;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,7 @@ namespace delayedpolufabrikkatbot.Models
         public bool WaitingForTitle => CurrentStep == PostCreationStep.WaitingForTitle;
 		public bool WaitingForContent => CurrentStep == PostCreationStep.WaitingForContent;
 
+		public ObjectId? PostId { get; set; }
     }
 
 	public enum PostCreationStep

@@ -24,7 +24,7 @@ namespace delayedpolufabrikkatbot.Repositories
             _postsCollection = _database.GetCollection<PostSubmition>();
         }
 
-        public async Task UpdaterPostTitleAndUserID(ObjectId userId, string postTitle)
+        public async Task<ObjectId> CreatePostWithTitleAndUserID(ObjectId userId, string postTitle)
         {
             var newPost = new PostSubmition
             {
@@ -34,6 +34,7 @@ namespace delayedpolufabrikkatbot.Repositories
             };
 
             await _postsCollection.InsertOneAsync(newPost);
+            return newPost.Id;
         }
 
         public async Task<List<PostSubmition>> GetLastPostsByUserId(ObjectId userId, int limit)
