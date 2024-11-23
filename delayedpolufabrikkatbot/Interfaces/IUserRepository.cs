@@ -9,5 +9,6 @@ namespace delayedpolufabrikkatbot.Interfaces
         public Task<User> CreateUser(User newUser);
         public Task<User> GetUserById(ObjectId userId);
         public Task<User> GetUserByTelegramId(long telegramId);
+        public Task<User> AddReputationToUser(long telegramId, int reputationPoints);
     }
 }

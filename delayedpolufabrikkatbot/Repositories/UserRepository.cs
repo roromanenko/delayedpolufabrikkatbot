@@ -55,5 +55,22 @@ namespace delayedpolufabrikkatbot.Repositories
             var filter = Builders<User>.Filter.Eq(u => u.TelegramId, telegramId);
             return _userCollection.Find(filter).FirstOrDefaultAsync();
         }
+
+        public async Task<User> AddReputationToUser(long telegramId, int reputationPoints)
+        {
+            // Фильтр для поиска пользователя по Telegram ID
+            var filter = Builders<User>.Filter.Eq(u => u.TelegramId, telegramId);
+
+            // Обновление репутации: увеличение текущего значения
+            var update = Builders<User>.Update.Inc(u => u.Reputation, reputationPoints);
+
+            // Возвращаем обновленный документ пользователя
+            var options = new FindOneAndUpdateOptions<User>
+            {
+                ReturnDocument = ReturnDocument.After // Возвращать обновленный документ
+            };
+
+            return await _userCollection.FindOneAndUpdateAsync(filter, update, options);
+        }
     }
 }

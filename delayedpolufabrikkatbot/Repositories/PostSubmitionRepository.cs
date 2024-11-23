@@ -48,5 +48,13 @@ namespace delayedpolufabrikkatbot.Repositories
 
             return posts;
         }
+
+        public async Task UpdatePostReputation(ObjectId postId, int reputation)
+        {
+            var filter = Builders<PostSubmition>.Filter.Eq(post => post.Id, postId);
+            var update = Builders<PostSubmition>.Update.Set(post => post.ChangeReputation, reputation);
+
+            await _postsCollection.UpdateOneAsync(filter, update);
+        }
     }
 }
