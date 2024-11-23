@@ -1,5 +1,8 @@
 ﻿using delayedpolufabrikkatbot.Interfaces;
+using delayedpolufabrikkatbot.Models;
+using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
+using System;
 using System.Text.RegularExpressions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -10,11 +13,12 @@ namespace delayedpolufabrikkatbot.Service
     public class PostForwardService : IPostForwardService
     {
         const long moderationChatId = 7477125681;
+		private readonly IPostReviewSessionService _postReviewSessionService;
 
-        public PostForwardService()
+		public PostForwardService(IPostReviewSessionService postReviewSessionService)
         {
-
-        }
+			_postReviewSessionService = postReviewSessionService;
+		}
 
         public async void ForwardPostToModeration(Update update, ITelegramBotClient botClient, IUserRepository userRepository, IPostSubmitionRepository postSubmitionRepository, Models.PostCreationSession session)
         {
@@ -22,20 +26,7 @@ namespace delayedpolufabrikkatbot.Service
             var userId = update.Message.From.Id;
             var user = await userRepository.GetUserByTelegramId(userId);
 
-            // Генерация CallbackData с ObjectId поста
-            var inlineKeyboard = new InlineKeyboardMarkup(new[] {
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData("10 очков", $"add_reputation:{user.Id}:{session.PostId}:10"),
-                InlineKeyboardButton.WithCallbackData("20 очков", $"add_reputation:{user.Id}:{session.PostId}:20"),
-                InlineKeyboardButton.WithCallbackData("50 очков", $"add_reputation:{user.Id}:{session.PostId}:50")
-            },
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData("Игнорировать", $"ignore_post:{session.PostId}")
-            }
-            });
-
+			var inlineKeyboard = GetReviewButtonsAndSetupSessions(session.PostId.Value, userId);
 
             if (update.Message.Text != null)
             {
@@ -68,52 +59,44 @@ namespace delayedpolufabrikkatbot.Service
         {
             var callbackData = callbackQuery.Data;
 
-            if (callbackData.StartsWith("add_reputation:"))
+            if (_postReviewSessionService.TryGetReviewSessionItem(callbackData, out var session))
             {
-                var regex = new Regex("add_reputation:(?<userId>\\w+):(?<postId>\\w+):(?<reputation>\\d+)");
-                var match = regex.Match(callbackData);
+				if(session.PublicationResolution == PublicationResolution.Approved)
+				{
+					await postSubmitionRepository.UpdatePostReputation(session.PostId, session.Reputation);
 
-                var userId = match.Groups["userId"].Value;
-                var postId = match.Groups["postId"].Value;
-                var reputation = match.Groups["reputation"].Value;
+					await userRepository.AddReputationToUser(session.TelegramUserId, session.Reputation);
 
-                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(postId) || string.IsNullOrEmpty(reputation))
-                {
-                    await botClient.AnswerCallbackQuery(
-                                callbackQueryId: callbackQuery.Id,
-                                text: "Ошибка: некорректный идентификатор поста.",
-                                showAlert: true
-                            );
-                    return;
-                }
+					await botClient.AnswerCallbackQuery(
+						callbackQueryId: callbackQuery.Id,
+						text: $"Репутация +{session.Reputation} добавлена пользователю {session.TelegramUserId}."
+					);
 
-                await postSubmitionRepository.UpdatePostReputation(ObjectId.Parse(postId), int.Parse(reputation));
+					await botClient.EditMessageReplyMarkup(
+						chatId: callbackQuery.Message.Chat.Id,
+						messageId: callbackQuery.Message.MessageId,
+						replyMarkup: null
+					);
+				}
+				if(session.PublicationResolution == PublicationResolution.Ignored)
+				{
+					await botClient.DeleteMessage(
+							chatId: callbackQuery.Message.Chat.Id,
+							messageId: callbackQuery.Message.MessageId
+						);
 
-                await userRepository.AddReputationToUser(long.Parse(userId), int.Parse(reputation));
+					await botClient.AnswerCallbackQuery(
+						callbackQueryId: callbackQuery.Id,
+						text: "Сообщение удалено, репутация не добавлена."
+					);
+				}
 
-                await botClient.AnswerCallbackQuery(
-                    callbackQueryId: callbackQuery.Id,
-                    text: $"Репутация +{reputation} добавлена пользователю {userId}."
-                );
-
-                await botClient.EditMessageReplyMarkup(
-                    chatId: callbackQuery.Message.Chat.Id,
-                    messageId: callbackQuery.Message.MessageId,
-                    replyMarkup: null
-                );
-            }
-            else if (callbackData.StartsWith("ignore_post:"))
-            {
-                await botClient.DeleteMessage(
-                        chatId: callbackQuery.Message.Chat.Id,
-                        messageId: callbackQuery.Message.MessageId
-                    );
-
-                await botClient.AnswerCallbackQuery(
-                    callbackQueryId: callbackQuery.Id,
-                    text: "Сообщение удалено, репутация не добавлена."
-                ); 
-            }
+				await botClient.AnswerCallbackQuery(
+					callbackQueryId: callbackQuery.Id,
+					text: "Ошибка: некорректный идентификатор поста.",
+					showAlert: true
+				);
+			}
             else
             {
                 await botClient.AnswerCallbackQuery(
@@ -123,6 +106,57 @@ namespace delayedpolufabrikkatbot.Service
                 );
             }
         }
+
+		private InlineKeyboardMarkup GetReviewButtonsAndSetupSessions(ObjectId postId, long telegramUserId)
+		{
+			var reputation10Guid = Guid.NewGuid().ToString();
+			_postReviewSessionService.AddReviewSessionItem(reputation10Guid, new ReviewPublicationSession
+			{
+				PostId = postId,
+				TelegramUserId = telegramUserId,
+				PublicationResolution = PublicationResolution.Approved,
+				Reputation = 10
+			});
+			var reputation20Guid = Guid.NewGuid().ToString();
+			_postReviewSessionService.AddReviewSessionItem(reputation20Guid, new ReviewPublicationSession
+			{
+				PostId = postId,
+				TelegramUserId = telegramUserId,
+				PublicationResolution = PublicationResolution.Approved,
+				Reputation = 20
+			});
+			var reputation50Guid = Guid.NewGuid().ToString();
+			_postReviewSessionService.AddReviewSessionItem(reputation50Guid, new ReviewPublicationSession
+			{
+				PostId = postId,
+				TelegramUserId = telegramUserId,
+				PublicationResolution = PublicationResolution.Approved,
+				Reputation = 50
+			});
+			var ignoreGuid = Guid.NewGuid().ToString();
+			_postReviewSessionService.AddReviewSessionItem(reputation50Guid, new ReviewPublicationSession
+			{
+				PostId = postId,
+				TelegramUserId = telegramUserId,
+				PublicationResolution = PublicationResolution.Ignored,
+				Reputation = 0
+			});
+
+			var inlineKeyboard = new InlineKeyboardMarkup(new[] {
+			new[]
+			{
+				InlineKeyboardButton.WithCallbackData("10 очков", reputation10Guid),
+				InlineKeyboardButton.WithCallbackData("20 очков", reputation20Guid),
+				InlineKeyboardButton.WithCallbackData("50 очков", reputation50Guid)
+			},
+			new[]
+			{
+				InlineKeyboardButton.WithCallbackData("Игнорировать", ignoreGuid)
+			}
+			});
+
+			return inlineKeyboard;
+		}
     }
 }
 

@@ -17,7 +17,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddScoped<IPostCreationSessionService, PostCreationSessionService>();
-        services.AddScoped<IPostForwardService, PostForwardService>();
+		services.AddScoped<IPostReviewSessionService, PostReviewSessionService>();
+		services.AddScoped<IPostForwardService, PostForwardService>();
         services.AddScoped<IMessageHandlerService, MessageHandlerService>();
         services.AddScoped<ICallbackQueryHandlerService, CallbackQueryHandlerService>();
         return services;
