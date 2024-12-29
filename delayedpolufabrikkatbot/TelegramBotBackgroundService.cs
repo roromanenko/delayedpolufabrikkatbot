@@ -27,12 +27,17 @@ namespace delayedpolufabrikkatbot
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var botClient = new TelegramBotClient(_telegramOptions.Token);
+			if(!await botClient.TestApi(stoppingToken))
+			{
+				_logger.LogCritical("Incorrect telegram token");
+			}
 
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery }
+                AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery]
             };
 
+			// Main cycle
             while (!stoppingToken.IsCancellationRequested)
             {
                 await botClient.ReceiveAsync(HandleUpdateAsync, HandleErrorAsync, receiverOptions, stoppingToken);
@@ -42,8 +47,7 @@ namespace delayedpolufabrikkatbot
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
             using IServiceScope scope = _serviceProvider.CreateScope();
-            var messageHandler = scope.ServiceProvider.GetRequiredService<IMessageHandlerService>();
-            var callbackQueryHandler = scope.ServiceProvider.GetRequiredService<ICallbackQueryHandlerService>();
+            var messageHandler = scope.ServiceProvider.GetRequiredService<IRootMessageHandler>();
 
             if (update.Type == UpdateType.Message)
             {
@@ -53,7 +57,7 @@ namespace delayedpolufabrikkatbot
             {
                 try
                 {
-                    await callbackQueryHandler.HandleCallbackQueryAsync(botClient, update, cancellationToken);
+                    await messageHandler.HandleCallbackQueryAsync(botClient, update, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -64,6 +68,7 @@ namespace delayedpolufabrikkatbot
 
         private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
+			_logger.LogError($"Error message: {exception.Message}\nFull error: {exception}");
             return Task.CompletedTask;
         }
     }

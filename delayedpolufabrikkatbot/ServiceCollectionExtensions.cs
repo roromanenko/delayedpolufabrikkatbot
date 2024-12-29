@@ -1,37 +1,43 @@
 ﻿using delayedpolufabrikkatbot;
+using delayedpolufabrikkatbot.Handlers;
 using delayedpolufabrikkatbot.Interfaces;
+using delayedpolufabrikkatbot.Models.Sessions;
 using delayedpolufabrikkatbot.Options;
 using delayedpolufabrikkatbot.Repositories;
 using delayedpolufabrikkatbot.Service;
+using delayedpolufabrikkatbot.Utilities;
 using MongoDB.Driver;
+using System;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddRepositories(this IServiceCollection services)
-    {
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IPostSubmitionRepository, PostSubmitionRepository>();
-        return services;
-    }
 
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
-        services.AddScoped<IPostCreationSessionService, PostCreationSessionService>();
-		services.AddScoped<IPostReviewSessionService, PostReviewSessionService>();
-		services.AddScoped<IPostForwardService, PostForwardService>();
-        services.AddScoped<IMessageHandlerService, MessageHandlerService>();
-        services.AddScoped<ICallbackQueryHandlerService, CallbackQueryHandlerService>();
+		services.AddScoped<IUserRepository, UserRepository>();
+		services.AddScoped<IPostSubmitionRepository, PostSubmitionRepository>();
+		services.AddScoped<IAdminChannelService, AdminChannelService>();
+        services.AddScoped<IRootMessageHandler, RootMessageHandler>();
+		services.AddScoped<ICacheManager, CacheManager>();
+		services.AddScoped<ISessionMessageHandler, SessionMessageHandler>();
+		services.AddScoped<BaseSessionMessageHandler<PostCreationSession>, PostCreationSessionMessageHandler>();
+
+
         return services;
     }
 
     public static IServiceCollection AddMongoDb(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration["delayedpolufabrikkatbot:MongodbConnection"];
-        var settings = MongoClientSettings.FromConnectionString(connectionString);
-        settings.ServerApi = new ServerApi(ServerApiVersion.V1);
-        var client = new MongoClient(settings);
+		services.AddScoped(opt =>
+		{
+			var connectionString = configuration["delayedpolufabrikkatbot:MongodbConnection"];
+			var settings = MongoClientSettings.FromConnectionString(connectionString);
+			settings.ServerApi = new ServerApi(ServerApiVersion.V1);
+			var client = new MongoClient(settings);
 
-        services.AddSingleton(client);
+			return client;
+		});
+
         services.Configure<MongoDbOptions>(configuration.GetSection(nameof(MongoDbOptions)));
         return services;
     }
