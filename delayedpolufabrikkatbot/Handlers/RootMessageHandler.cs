@@ -31,21 +31,20 @@ namespace delayedpolufabrikkatbot.Handlers
 
         public async Task HandleMessageAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            Content content = new Content();
-
-            var text = update.Message.Text;
             var userId = update.Message.From.Id;
             // Регистрация нового пользователя
             await _userRepository.AddIfNotExist(userId);
-
             var user = await _userRepository.GetUserByTelegramId(userId);
 
             if (_cacheManager.TryGet(user.Id, out BaseUserSession session))
             {
 				await _sessionMessageHandler.HandleSessionMessage(botClient, update, session);
+				return;
             }
 
-            switch (text)
+			Content content = new Content();
+			var text = update.Message.Text;
+			switch (text)
             {
                 case mainInfo:
                     await botClient.SendMessage(update.Message.Chat.Id, content.GetInfo(), replyMarkup: GetRootButtons());
