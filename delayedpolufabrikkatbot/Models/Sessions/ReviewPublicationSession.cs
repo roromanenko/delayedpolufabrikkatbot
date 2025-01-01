@@ -2,7 +2,7 @@
 
 namespace delayedpolufabrikkatbot.Models.Sessions
 {
-    public class ReviewPublicationSession
+    public class ReviewPublicationSession : BaseSession
     {
         public long TelegramUserId { get; set; }
         public ObjectId PostId { get; set; }

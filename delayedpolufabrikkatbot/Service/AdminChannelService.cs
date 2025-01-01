@@ -63,6 +63,7 @@ namespace delayedpolufabrikkatbot.Service
 			var reputation10Guid = Guid.NewGuid().ToString();
 			_cacheManager.Add(reputation10Guid, new ReviewPublicationSession
 			{
+				Key = reputation10Guid,
 				PostId = postId,
 				TelegramUserId = telegramUserId,
 				PublicationResolution = PublicationResolution.Approved,
@@ -71,6 +72,7 @@ namespace delayedpolufabrikkatbot.Service
 			var reputation20Guid = Guid.NewGuid().ToString();
 			_cacheManager.Add(reputation20Guid, new ReviewPublicationSession
 			{
+				Key = reputation20Guid,
 				PostId = postId,
 				TelegramUserId = telegramUserId,
 				PublicationResolution = PublicationResolution.Approved,
@@ -79,14 +81,16 @@ namespace delayedpolufabrikkatbot.Service
 			var reputation50Guid = Guid.NewGuid().ToString();
 			_cacheManager.Add(reputation50Guid, new ReviewPublicationSession
 			{
+				Key = reputation50Guid,
 				PostId = postId,
 				TelegramUserId = telegramUserId,
 				PublicationResolution = PublicationResolution.Approved,
 				Reputation = 50
 			});
 			var ignoreGuid = Guid.NewGuid().ToString();
-			_cacheManager.Add(reputation50Guid, new ReviewPublicationSession
+			_cacheManager.Add(ignoreGuid, new ReviewPublicationSession
 			{
+				Key = ignoreGuid,
 				PostId = postId,
 				TelegramUserId = telegramUserId,
 				PublicationResolution = PublicationResolution.Ignored,

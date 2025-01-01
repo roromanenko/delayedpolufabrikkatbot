@@ -1,4 +1,5 @@
 ﻿using delayedpolufabrikkatbot.Interfaces;
+using delayedpolufabrikkatbot.Models;
 using delayedpolufabrikkatbot.Models.Sessions;
 using delayedpolufabrikkatbot.Repositories;
 using Telegram.Bot;
@@ -7,7 +8,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace delayedpolufabrikkatbot.Handlers
 {
-    public class RootMessageHandler : IRootMessageHandler
+    public class RootHandler : IRootHandler
     {
         private const string mainInfo = "Информация";
         private const string newPost = "Создать пост";
@@ -20,7 +21,7 @@ namespace delayedpolufabrikkatbot.Handlers
         private readonly ICacheManager _cacheManager;
 		private readonly ISessionHandler _sessionMessageHandler;
 
-		public RootMessageHandler(IUserRepository userRepository, IPostSubmitionRepository postSubmitionRepository, IAdminChannelService adminChannelService, ICacheManager cacheManager, ISessionHandler sessionMessageHandler)
+		public RootHandler(IUserRepository userRepository, IPostSubmitionRepository postSubmitionRepository, IAdminChannelService adminChannelService, ICacheManager cacheManager, ISessionHandler sessionMessageHandler)
         {
             _userRepository = userRepository;
             _postSubmitionRepository = postSubmitionRepository;
@@ -75,42 +76,11 @@ namespace delayedpolufabrikkatbot.Handlers
         {
             var callbackQuery = update.CallbackQuery;
 
-            if (_cacheManager.TryGet(callbackQuery.Data, out ReviewPublicationSession session))
-            {
-                switch (session.PublicationResolution)
-                {
-                    case PublicationResolution.Approved:
-                        await _postSubmitionRepository.UpdatePostReputation(session.PostId, session.Reputation);
-                        await _userRepository.AddReputationToUser(session.TelegramUserId, session.Reputation);
-                        await botClient.AnswerCallbackQuery(
-                            callbackQueryId: callbackQuery.Id,
-                            text: $"Репутация +{session.Reputation} добавлена пользователю {session.TelegramUserId}."
-                        );
-                        await botClient.EditMessageReplyMarkup(
-                            chatId: callbackQuery.Message.Chat.Id,
-                            messageId: callbackQuery.Message.MessageId,
-                            replyMarkup: null
-                        );
-                        break;
-                    case PublicationResolution.Ignored:
-                        await botClient.DeleteMessage(
-                            chatId: callbackQuery.Message.Chat.Id,
-                            messageId: callbackQuery.Message.MessageId
-                        );
-                        await botClient.AnswerCallbackQuery(
-                            callbackQueryId: callbackQuery.Id,
-                            text: "Сообщение удалено, репутация не добавлена."
-                        );
-                        break;
-                    default:
-                        await botClient.AnswerCallbackQuery(
-                        callbackQueryId: callbackQuery.Id,
-                        text: "Ошибка: некорректный идентификатор поста.",
-                        showAlert: true
-                        );
-                        break;
-                }
-            }
+			if (_cacheManager.TryGet(callbackQuery.Data, out BaseSession session))
+			{
+				await _sessionMessageHandler.HandleSessionMessage(botClient, update, session);
+				return;
+			}
             else
             {
                 await botClient.AnswerCallbackQuery(
@@ -119,8 +89,6 @@ namespace delayedpolufabrikkatbot.Handlers
                     showAlert: true
                 );
             }
-
-            _cacheManager.Remove(callbackQuery.Data);
         }
 
         private IReplyMarkup GetRootButtons()

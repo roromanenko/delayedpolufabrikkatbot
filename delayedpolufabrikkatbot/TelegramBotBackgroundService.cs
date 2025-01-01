@@ -44,27 +44,49 @@ namespace delayedpolufabrikkatbot
             }
         }
 
-        private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+        private Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
             using IServiceScope scope = _serviceProvider.CreateScope();
-            var messageHandler = scope.ServiceProvider.GetRequiredService<IRootMessageHandler>();
+            var messageHandler = scope.ServiceProvider.GetRequiredService<IRootHandler>();
 
-            if (update.Type == UpdateType.Message)
-            {
-                await messageHandler.HandleMessageAsync(botClient, update, cancellationToken);
-            }
-            else if (update.Type == UpdateType.CallbackQuery)
-            {
-                try
-                {
-                    await messageHandler.HandleCallbackQueryAsync(botClient, update, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Ошибка при обработке обновления.");
-                }
-            }
-        }
+			try
+			{
+				return update.Type switch
+				{
+					UpdateType.Unknown
+					or UpdateType.InlineQuery
+					or UpdateType.ChosenInlineResult
+					or UpdateType.EditedMessage
+					or UpdateType.ChannelPost
+					or UpdateType.EditedChannelPost
+					or UpdateType.ShippingQuery
+					or UpdateType.PreCheckoutQuery
+					or UpdateType.Poll
+					or UpdateType.PollAnswer
+					or UpdateType.MyChatMember
+					or UpdateType.ChatMember
+					or UpdateType.ChatJoinRequest
+					or UpdateType.MessageReaction
+					or UpdateType.MessageReactionCount
+					or UpdateType.ChatBoost
+					or UpdateType.RemovedChatBoost
+					or UpdateType.BusinessConnection
+					or UpdateType.BusinessMessage
+					or UpdateType.EditedBusinessMessage
+					or UpdateType.DeletedBusinessMessages
+					or UpdateType.PurchasedPaidMedia => throw new NotImplementedException(),
+
+					UpdateType.Message => messageHandler.HandleMessageAsync(botClient, update, cancellationToken),
+					UpdateType.CallbackQuery => messageHandler.HandleCallbackQueryAsync(botClient, update, cancellationToken),
+					_ => throw new ArgumentOutOfRangeException($"Unknown Update Type: {update.Type}"),
+				};
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Ошибка при обработке обновления.");
+				return Task.CompletedTask;
+			}
+		}
 
         private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
