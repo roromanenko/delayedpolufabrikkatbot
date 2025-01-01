@@ -5,18 +5,18 @@ using Telegram.Bot.Types;
 
 namespace delayedpolufabrikkatbot.Handlers
 {
-	public class SessionMessageHandler : ISessionMessageHandler
+	public class SessionHandler : ISessionHandler
 	{
 		private readonly IServiceProvider _serviceProvider;
 
-		public SessionMessageHandler(IServiceProvider serviceProvider)
+		public SessionHandler(IServiceProvider serviceProvider)
 		{
 			_serviceProvider = serviceProvider;
 		}
-		public Task HandleSessionMessage(ITelegramBotClient botClient, Update update, BaseUserSession session)
+		public Task HandleSessionMessage(ITelegramBotClient botClient, Update update, BaseSession session)
 		{
 			var sessionType = session.GetType();
-			var handlerType = typeof(BaseSessionMessageHandler<>).MakeGenericType(sessionType);
+			var handlerType = typeof(BaseSessionHandler<>).MakeGenericType(sessionType);
 
 			// Resolve the handler dynamically
 			var handler = _serviceProvider.GetService(handlerType);
@@ -25,7 +25,7 @@ namespace delayedpolufabrikkatbot.Handlers
 				throw new InvalidOperationException($"No handler found for session type {sessionType.Name}");
 			}
 
-			var handleMethod = handlerType.GetMethod(nameof(BaseSessionMessageHandler<BaseUserSession>.HandleSessionMessage));
+			var handleMethod = handlerType.GetMethod(nameof(BaseSessionHandler<BaseSession>.HandleSessionMessage));
 			return (Task)handleMethod?.Invoke(handler, [botClient, update, session]);
 		}
 	}

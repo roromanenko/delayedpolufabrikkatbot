@@ -4,11 +4,11 @@ using Telegram.Bot.Types;
 
 namespace delayedpolufabrikkatbot.Interfaces
 {
-	public abstract class BaseSessionMessageHandler<T> where T : BaseUserSession
+	public abstract class BaseSessionHandler<T> where T : BaseSession
 	{
 		private readonly ICacheManager _cacheManager;
 
-		public BaseSessionMessageHandler(ICacheManager cacheManager)
+		public BaseSessionHandler(ICacheManager cacheManager)
 		{
 			_cacheManager = cacheManager;
 		}
@@ -17,7 +17,7 @@ namespace delayedpolufabrikkatbot.Interfaces
 		{
 			if (await ProcessSessionAndReturnIsSessionFinished(botClient, update, session))
 			{
-				_cacheManager.Remove(session.UserId);
+				_cacheManager.Remove(session.Key);
 			}
 		}
 

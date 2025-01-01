@@ -4,8 +4,8 @@ using delayedpolufabrikkatbot.Models.Sessions;
 
 namespace delayedpolufabrikkatbot.Interfaces
 {
-	public interface ISessionMessageHandler
+	public interface ISessionHandler
 	{
-		Task HandleSessionMessage(ITelegramBotClient botClient, Update update, BaseUserSession session);
+		Task HandleSessionMessage(ITelegramBotClient botClient, Update update, BaseSession session);
 	}
 }

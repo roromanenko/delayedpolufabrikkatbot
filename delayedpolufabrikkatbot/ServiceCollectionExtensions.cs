@@ -19,8 +19,8 @@ public static class ServiceCollectionExtensions
 		services.AddScoped<IAdminChannelService, AdminChannelService>();
         services.AddScoped<IRootMessageHandler, RootMessageHandler>();
 		services.AddScoped<ICacheManager, CacheManager>();
-		services.AddScoped<ISessionMessageHandler, SessionMessageHandler>();
-		services.AddScoped<BaseSessionMessageHandler<PostCreationSession>, PostCreationSessionMessageHandler>();
+		services.AddScoped<ISessionHandler, SessionHandler>();
+		services.AddScoped<BaseSessionHandler<PostCreationSession>, PostCreationSessionHandler>();
 
 
         return services;

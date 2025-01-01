@@ -10,12 +10,12 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace delayedpolufabrikkatbot.Handlers
 {
-	public class PostCreationSessionMessageHandler : BaseSessionMessageHandler<PostCreationSession>
+	public class PostCreationSessionHandler : BaseSessionHandler<PostCreationSession>
 	{
 		private readonly IPostSubmitionRepository _postSubmitionRepository;
 		private readonly IAdminChannelService _adminChannelService;
 
-		public PostCreationSessionMessageHandler(ICacheManager cacheManager, IPostSubmitionRepository postSubmitionRepository, IAdminChannelService adminChannelService) : base(cacheManager)
+		public PostCreationSessionHandler(ICacheManager cacheManager, IPostSubmitionRepository postSubmitionRepository, IAdminChannelService adminChannelService) : base(cacheManager)
 		{
 			_postSubmitionRepository = postSubmitionRepository;
 			_adminChannelService = adminChannelService;

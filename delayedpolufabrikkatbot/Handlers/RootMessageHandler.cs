@@ -18,9 +18,9 @@ namespace delayedpolufabrikkatbot.Handlers
         private readonly IPostSubmitionRepository _postSubmitionRepository;
         private readonly IAdminChannelService _adminChannelService;
         private readonly ICacheManager _cacheManager;
-		private readonly ISessionMessageHandler _sessionMessageHandler;
+		private readonly ISessionHandler _sessionMessageHandler;
 
-		public RootMessageHandler(IUserRepository userRepository, IPostSubmitionRepository postSubmitionRepository, IAdminChannelService adminChannelService, ICacheManager cacheManager, ISessionMessageHandler sessionMessageHandler)
+		public RootMessageHandler(IUserRepository userRepository, IPostSubmitionRepository postSubmitionRepository, IAdminChannelService adminChannelService, ICacheManager cacheManager, ISessionHandler sessionMessageHandler)
         {
             _userRepository = userRepository;
             _postSubmitionRepository = postSubmitionRepository;
@@ -36,7 +36,7 @@ namespace delayedpolufabrikkatbot.Handlers
             await _userRepository.AddIfNotExist(userId);
             var user = await _userRepository.GetUserByTelegramId(userId);
 
-            if (_cacheManager.TryGet(user.Id, out BaseUserSession session))
+            if (_cacheManager.TryGet(user.Id, out BaseSession session))
             {
 				await _sessionMessageHandler.HandleSessionMessage(botClient, update, session);
 				return;
@@ -53,6 +53,7 @@ namespace delayedpolufabrikkatbot.Handlers
                     _cacheManager.Add(user.Id, new PostCreationSession
                     {
 						UserId = user.Id,
+						Key = user.Id,
 						CurrentStep = PostCreationStep.WaitingForTitle
                     });
                     await botClient.SendMessage(update.Message.Chat.Id, "Напишите название вашей публикации. Это название нужно для того, чтобы вы смогли в будущем отслеживать её статус.");

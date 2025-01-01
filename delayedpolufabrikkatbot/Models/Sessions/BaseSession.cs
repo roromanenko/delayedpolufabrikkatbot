@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 
 namespace delayedpolufabrikkatbot.Models.Sessions
 {
-	public abstract class BaseUserSession
+	public abstract class BaseSession
 	{
-        public ObjectId UserId { get; set; }
+        public object Key { get; set; }
     }
 }
